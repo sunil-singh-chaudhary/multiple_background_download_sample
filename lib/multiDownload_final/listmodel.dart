@@ -1,30 +1,32 @@
-// import 'package:background_downloader/background_downloader.dart';
+import 'package:background_download_sample/trying_method/multipledownlaod.dart';
+import 'package:background_downloader/background_downloader.dart';
 
-// class DownloadModel {
-//   List<bool> downloadInProgress = [];
-//   List<bool> downloadComplete = [];
-//   List<double> listProgress = [];
-//   List<DownloadTask> downloadTaskList = [];
-//   List<bool> pauseList = [];
+import 'myloadtask.dart';
 
-//   DownloadModel({
-//     required int itemCount,
-//   }) {
-//     // Initialize the lists with the given number of items
-//     for (int i = 0; i < itemCount; i++) {
-//       downloadInProgress.add(false);
-//       downloadComplete.add(false);
-//       listProgress.add(0.0);
-//       downloadTaskList.add(DownloadTask(
-//         url: '',
-//         filename: 'randoms',
-//         directory: 'mydireactory',
-//         baseDirectory: BaseDirectory.applicationDocuments,
-//         updates: Updates.statusAndProgress,
-//         allowPause: true,
-//         metaData: '<example metaData>',
-//       ));
-//       pauseList.add(false);
-//     }
-//   }
-// }
+class DownloadModel {
+  List<MyDownloadTask> downloadTaskList = [];
+
+  DownloadModel({
+    required int itemCount,
+  }) {
+    // Initialize the lists with the given number of items
+    for (int i = 0; i < itemCount; i++) {
+      downloadTaskList.add(
+        MyDownloadTask(
+          buttonstate: ButtonState.download,
+          downloadInProgress: false,
+          downloadComplete: false,
+          listProgress: 0.0,
+          downloadTask: DownloadTask(
+            url: '',
+            allowPause: true,
+            baseDirectory: BaseDirectory.applicationDocuments,
+            filename: 'test',
+            directory: 'my/directory',
+          ),
+          isPaused: false,
+        ),
+      );
+    }
+  }
+}

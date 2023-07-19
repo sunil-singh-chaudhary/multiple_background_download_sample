@@ -1,12 +1,11 @@
 import 'dart:async';
 
-import 'package:background_download_sample/trying_method/value_notifier.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/material.dart';
 
-import 'download_const.dart';
+import '../multiDownload_final/download_Utils.dart';
 
-enum ButtonState { download, cancel, pause, resume, reset }
+enum ButtonState { download, completed, pause, resume }
 
 class MultipleDonwloadPauseResume extends StatefulWidget {
   const MultipleDonwloadPauseResume({super.key});
@@ -21,7 +20,7 @@ class _MultipleDonwloadPauseResumeState
   final buttonTexts = ['Download', 'Cancel', 'Pause', 'Resume', 'Reset'];
 
   ButtonState buttonState = ButtonState.download;
-
+  IconData? downloadButton;
   TaskStatus? downloadTaskStatus;
   DownloadTask? backgroundDownloadTask;
   // MyValueNotifier myData = MyValueNotifier(0.0);
@@ -64,13 +63,24 @@ class _MultipleDonwloadPauseResumeState
       switch (update) {
         case TaskStatusUpdate _:
           if (update.task == backgroundDownloadTask) {
-            buttonState = switch (update.status) {
-              TaskStatus.running || TaskStatus.enqueued => ButtonState.pause,
-              TaskStatus.paused => ButtonState.resume,
-              _ => ButtonState.reset
-            };
             setState(() {
-              downloadTaskStatus = update.status;
+              buttonState = DonwloadUtils.getButtonState(
+                  update.status); //chcek progress status
+// Set the appropriate icon based on the buttonState
+              switch (buttonState) {
+                case ButtonState.download:
+                  downloadButton = Icons.download;
+                  break;
+                case ButtonState.pause:
+                  downloadButton = Icons.pause;
+                  break;
+                case ButtonState.resume:
+                  downloadButton = Icons.play_arrow;
+                  break;
+                case ButtonState.completed:
+                  downloadButton = Icons.delete;
+                  break;
+              }
             });
           }
 

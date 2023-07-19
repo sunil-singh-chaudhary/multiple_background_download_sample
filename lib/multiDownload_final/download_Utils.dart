@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/material.dart';
 
+import '../trying_method/multipledownlaod.dart';
+
 class DonwloadUtils {
   static Future<void> processButtonPress({
     required String url,
@@ -12,7 +14,7 @@ class DonwloadUtils {
   }) async {
     debugPrint('download started with url $url');
     // start download
-    DownloadTask backgroundDownloadTask = DownloadTask(
+    DownloadTask background_taskid = DownloadTask(
       url: url,
       filename: filename, //'zipfile.zip',
       directory: direactoryname, // 'my/directory',
@@ -23,12 +25,11 @@ class DonwloadUtils {
     );
 
     await FileDownloader().enqueue(
-      backgroundDownloadTask,
+      background_taskid,
     );
-    debugPrint(
-        'download completed with taskid ${backgroundDownloadTask.taskId}');
+    debugPrint('download completed with taskid ${background_taskid.taskId}');
 
-    backgroundtask!(backgroundDownloadTask);
+    backgroundtask!(background_taskid);
   }
 
   static String generateRandomFileName(String extension) {
@@ -36,5 +37,17 @@ class DonwloadUtils {
     String randomString = DateTime.now().millisecondsSinceEpoch.toString() +
         random.nextInt(1000).toString();
     return '$randomString.$extension';
+  }
+
+  static ButtonState getButtonState(TaskStatus status) {
+    if (status == TaskStatus.running || status == TaskStatus.enqueued) {
+      return ButtonState.pause;
+    } else if (status == TaskStatus.paused) {
+      return ButtonState.resume;
+    } else if (status == TaskStatus.complete) {
+      return ButtonState.completed;
+    } else {
+      return ButtonState.download;
+    }
   }
 }
