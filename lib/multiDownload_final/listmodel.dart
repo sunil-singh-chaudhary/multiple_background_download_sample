@@ -1,4 +1,3 @@
-import 'package:background_download_sample/trying_method/multipledownlaod.dart';
 import 'package:background_downloader/background_downloader.dart';
 
 import 'myloadtask.dart';
@@ -13,7 +12,7 @@ class DownloadModel {
     for (int i = 0; i < itemCount; i++) {
       downloadTaskList.add(
         MyDownloadTask(
-          buttonstate: ButtonState.download,
+          // buttonstate: ButtonState.download,
           downloadInProgress: false,
           downloadComplete: false,
           listProgress: 0.0,

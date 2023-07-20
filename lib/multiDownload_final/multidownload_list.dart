@@ -3,12 +3,14 @@ import 'dart:convert';
 import 'package:background_download_sample/multiDownload_final/download_Utils.dart';
 import 'package:background_download_sample/multiDownload_final/listmodel.dart';
 import 'package:background_download_sample/multiDownload_final/taskwidget.dart';
-import 'package:background_download_sample/trying_method/multipledownlaod.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../model/video_model.dart';
+import 'Utils.dart';
+import 'VideoUtils.dart';
+import 'button_state_notifier.dart';
 import 'myloadtask.dart';
 import 'permission_handler.dart';
 
@@ -21,21 +23,20 @@ class MultiDonwloadListview extends StatefulWidget {
 
 class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
   List<VideoModel> model = [];
-  TaskStatus? downloadTaskStatus;
   DownloadTask? backgroundDownloadTask;
   double _kprogress = 0.0;
-  int progressIndex = 0;
+  ValueNotifier<int> progressIndexNotifier = ValueNotifier<int>(0);
   DownloadModel? donloadModel;
+  List<ValueNotifier<ButtonState>> buttonStateNotifiers = [];
+
   // ButtonState buttonState = ButtonState.download;
   // MyValueNotifier myData = MyValueNotifier();
-
-  /// Process the user tapping on a notification by printing a message
 
   @override
   void initState() {
     super.initState();
     initDonwloader(); //init downloader
-    loadjsonfromAssets().then(
+    Utils.loadjsonfromAssets().then(
       //load json from assets
       (value) {
         List<dynamic> list = json.decode(value);
@@ -43,14 +44,12 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
         setState(
           () {
             donloadModel = DownloadModel(itemCount: model.length);
+            buttonStateNotifiers = List.generate(model.length,
+                (_) => ValueNotifier<ButtonState>(ButtonState.download));
           },
         );
       },
     );
-  }
-
-  Future<String> loadjsonfromAssets() async {
-    return await rootBundle.loadString("assets/video.json");
   }
 
   @override
@@ -61,6 +60,8 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
         itemCount: model.length,
         itemBuilder: (context, index) {
           MyDownloadTask listModel = donloadModel!.downloadTaskList[index];
+          debugPrint('list index is $index-- ${buttonStateNotifiers[index]}');
+
           return ListTile(
             leading: CircleAvatar(
               radius: 24,
@@ -87,62 +88,65 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
                         )
                       : GestureDetector(
                           onTap: () async {
-                            if (listModel.buttonstate ==
+                            if (buttonStateNotifiers[index].value ==
                                 ButtonState.completed) {
-                              debugPrint('completed video $index');
+                              // debugPrint('completed video $index');
+                              buttonStateNotifiers[progressIndexNotifier.value]
+                                  .value = ButtonState.completed;
                               setState(() {
+                                progressIndexNotifier.value = index;
                                 listModel.downloadInProgress = false;
-                                listModel.buttonstate = ButtonState.completed;
-                                progressIndex = index;
                               });
                             } else {
+                              // Pass the index of the tapped item
                               onItemTap(index);
                             }
-                            // Pass the index of the tapped item
                           },
                           child: Icon(
-                            MyDownloadIcon.getIconData(listModel.buttonstate),
+                            MyDownloadIcon.getIconData(
+                                buttonStateNotifiers[index].value, () {
+                              setState(() {});
+                            }),
                             color: listModel.downloadComplete
                                 ? Colors.black
                                 : Colors.green,
                           ),
                         ),
-                  listModel.downloadInProgress
+                  donloadModel!.downloadTaskList[index].downloadInProgress
                       ? Positioned.fill(
                           child: Material(
                             color: Colors.transparent,
                             // Make the Material widget invisible
-
                             child: InkWell(
                               onTap: () async {
                                 DownloadTask pauseResumetaskID = donloadModel!
                                     .downloadTaskList[index].downloadTask!;
-                                debugPrint(
-                                    'index click-- $index and ${listModel.buttonstate}');
-                                debugPrint('id is $pauseResumetaskID');
-                                if (listModel.buttonstate ==
+
+                                if (buttonStateNotifiers[index].value ==
                                     ButtonState.pause) {
-                                  setState(() {
-                                    //error here on pause and resume on multiple list dodwnload
-                                    listModel.buttonstate = ButtonState.resume;
-                                    progressIndex = index;
-                                  });
-                                  pauseDownload(pauseResumetaskID);
-                                  //resume download
-                                } else if (listModel.buttonstate ==
+                                  buttonStateNotifiers[
+                                          progressIndexNotifier.value]
+                                      .value = ButtonState.resume;
+                                  //error here on pause and resume on multiple list dodwnload
+                                  progressIndexNotifier.value = index;
+                                  VideoUtils.pauseDownload(pauseResumetaskID);
+                                } else if (buttonStateNotifiers[index].value ==
                                     ButtonState.resume) {
-                                  setState(() {
-                                    //error here on pause and resume on multiple list dodwnload
-                                    listModel.buttonstate = ButtonState.pause;
-                                    progressIndex = index;
-                                  });
-                                  resumeDownload(pauseResumetaskID);
-                                  //pause download
+                                  // debugPrint('RESUME ELSE-- $ListbuttonStates');
+                                  buttonStateNotifiers[index].value =
+                                      ButtonState.pause;
+                                  //error here on pause and resume on multiple list dodwnload
+
+                                  progressIndexNotifier.value = index;
+
+                                  VideoUtils.resumeDownload(pauseResumetaskID);
                                 }
                               },
                               child: Icon(
-                                MyDownloadIcon.getIconData(donloadModel!
-                                    .downloadTaskList[index].buttonstate),
+                                MyDownloadIcon.getIconData(
+                                    buttonStateNotifiers[index].value, () {
+                                  setState(() {});
+                                }),
                                 //state as per in list
                                 color: Colors.blue,
                               ),
@@ -181,103 +185,56 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
                 'Download {filename}', 'Paused with metadata {metadata}'),
             progressBar: true)
         .configureNotification(
-            // for the 'Download & Open' dog picture
-            // which uses 'download' which is not the .defaultGroup
-            // but the .await group so won't use the above config
-
             complete: const TaskNotification(
                 'Download {filename}', 'Download complete'),
             tapOpensFile: true); // dog can also open directly from tap
     // Listen to updates and process
-    FileDownloader().updates.listen(
-      (update) {
-        switch (update) {
-          case TaskStatusUpdate _:
-            debugPrint('status task ${update.task}');
+    FileDownloader().updates.listen((update) {
+      if (update is TaskStatusUpdate) {
+        for (int i = 0; i < donloadModel!.downloadTaskList.length; i++) {
+          DownloadTask task = donloadModel!.downloadTaskList[i].downloadTask!;
+          if (task == update.task) {
+            TaskStatus status = update.status;
 
-            debugPrint('status bg $backgroundDownloadTask');
-            // Find the index of the task in the downloadTaskList
-            int taskIndex = donloadModel!.downloadTaskList
-                .indexWhere((task) => task.downloadTask == update.task);
-
-            //get the index of taskid when click frm notification otherwise it will return always o
-
-            if (update.task == backgroundDownloadTask) {
-              if (taskIndex != -1) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  setState(() {
-                    progressIndex = taskIndex; //update circular from this index
-
-                    downloadTaskStatus = update.status;
-                    debugPrint(
-                        'status index $taskIndex with progress $downloadTaskStatus');
-
-                    switch (update.status) {
-                      case TaskStatus.running:
-                      case TaskStatus.enqueued:
-                        setState(() {
-                          donloadModel!.downloadTaskList[progressIndex]
-                              .buttonstate = ButtonState.pause;
-                        });
-                        //when it is running show pause button with state set for check
-
-                        break;
-                      case TaskStatus.paused:
-                        debugPrint(
-                            'when pause click ${donloadModel!.downloadTaskList[progressIndex].buttonstate}');
-                        setState(() {
-                          donloadModel!.downloadTaskList[progressIndex]
-                              .buttonstate = ButtonState.resume;
-                        });
-
-                        break;
-                      case TaskStatus.canceled:
-                        donloadModel!.downloadTaskList[progressIndex]
-                            .buttonstate = ButtonState.download;
-
-                        break;
-                      default:
-                        donloadModel!.downloadTaskList[progressIndex]
-                            .buttonstate = ButtonState.completed;
-                        break;
-                    }
-                  });
-                });
-              }
+            // Update button state directly based on TaskStatus
+            if (status == TaskStatus.running || status == TaskStatus.enqueued) {
+              buttonStateNotifiers[i].value = ButtonState.pause;
+            } else if (status == TaskStatus.paused) {
+              buttonStateNotifiers[i].value = ButtonState.resume;
+            } else if (status == TaskStatus.canceled) {
+              buttonStateNotifiers[i].value = ButtonState.download;
             }
-
-          case TaskProgressUpdate _:
-            int taskIndex = donloadModel!.downloadTaskList
-                .indexWhere((task) => task.downloadTask == update.task);
-
-            // myData.updateValue(update.progress);
-            debugPrint('progress taskIndex $taskIndex');
-            setState(() {
-              progressIndex = taskIndex;
-              donloadModel!.downloadTaskList[progressIndex].listProgress =
-                  update.progress;
-              donloadModel!.downloadTaskList[progressIndex].buttonstate =
-                  ButtonState.pause;
-
-              if (update.progress >= 1) {
-                //value in 0 and complete is 1 not 100
-                //dwonload completed
-                donloadModel!
-                    .downloadTaskList[progressIndex].downloadInProgress = false;
-                donloadModel!.downloadTaskList[progressIndex].downloadComplete =
-                    true;
-              }
-            });
+            break; // Break loop once the corresponding task is found and updated
+          }
         }
-      },
-    );
+      } else if (update is TaskProgressUpdate) {
+        int taskIndex = donloadModel!.downloadTaskList
+            .indexWhere((task) => task.downloadTask == update.task);
+
+        setState(() {
+          progressIndexNotifier.value = taskIndex;
+
+          MyDownloadTask modellist =
+              donloadModel!.downloadTaskList[progressIndexNotifier.value];
+
+          modellist.listProgress = update.progress;
+
+          if (update.progress >= 1) {
+            // Download completed
+            modellist.downloadInProgress = false;
+            modellist.downloadComplete = true;
+            buttonStateNotifiers[progressIndexNotifier.value].value =
+                ButtonState.completed;
+          }
+        });
+      }
+    });
   }
 
   void onItemTap(int index) async {
-    setState(() {
-      progressIndex = index;
-    });
-    String url = model[progressIndex].videoUrl;
+    progressIndexNotifier.value = index;
+
+    String url = model[progressIndexNotifier.value].videoUrl;
     String randomefilename = DonwloadUtils.generateRandomFileName('mp4');
     bool hasPermission = await PermissionHandler.requestPermission();
     if (!hasPermission) {
@@ -286,7 +243,8 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
     }
 
     // Get the corresponding MyDownloadTask
-    MyDownloadTask listModel = donloadModel!.downloadTaskList[progressIndex];
+    MyDownloadTask listModel =
+        donloadModel!.downloadTaskList[progressIndexNotifier.value];
 
     // Start the download
     setState(() {
@@ -299,31 +257,28 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
       filename: randomefilename,
       direactoryname: 'Myvideo/Direactory',
       backgroundtask: (backgroundtaskid) {
+        buttonStateNotifiers[progressIndexNotifier.value].value =
+            ButtonState.pause;
+
         setState(() {
           backgroundDownloadTask = backgroundtaskid;
           listModel.downloadTask = backgroundDownloadTask;
-          listModel.buttonstate =
-              ButtonState.pause; // Update button state to pause
+          // Update button state to pause
         });
       },
     );
   }
 
-  void pauseDownload(DownloadTask pausetaskID) async {
-    debugPrint('pausing $pausetaskID');
+  void updateButtonState(int taskIndex, TaskStatus status) {
+    if (status == TaskStatus.running || status == TaskStatus.enqueued) {
+      buttonStateNotifiers[taskIndex].value = ButtonState.pause;
+    } else if (status == TaskStatus.paused) {
+      buttonStateNotifiers[taskIndex].value = ButtonState.resume;
+    } else if (status == TaskStatus.canceled) {
+      buttonStateNotifiers[taskIndex].value = ButtonState.download;
+    }
 
-    // Implement the pause functionality here
-    await FileDownloader().pause(pausetaskID);
-  }
-
-  void resumeDownload(DownloadTask pausetaskID) async {
-    debugPrint('res8mming $pausetaskID');
-    // Implement the resume functionality here
-    await FileDownloader().resume(pausetaskID);
-  }
-
-  void deleteOrPlay() {
-    // Implement the delete or play functionality here
-    debugPrint('delete or play');
+    debugPrint(
+        'adding in list index $taskIndex and value is $buttonStateNotifiers');
   }
 }

@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/material.dart';
 
-import '../trying_method/multipledownlaod.dart';
+import 'button_state_notifier.dart';
 
 class DonwloadUtils {
   static Future<void> processButtonPress({
