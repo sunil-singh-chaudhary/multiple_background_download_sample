@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 class CircularProgressIndicatorWidget extends StatelessWidget {
   final Future<double> future;
+  final bool isCanceled;
 
-  const CircularProgressIndicatorWidget({super.key, required this.future});
+  const CircularProgressIndicatorWidget(
+      {super.key, required this.future, required this.isCanceled});
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +16,7 @@ class CircularProgressIndicatorWidget extends StatelessWidget {
           // While the future is still in progress, show the CircularProgressIndicator
           return const CircularProgressIndicator(
             value: null, // Since it's still loading, we set value to null
-            backgroundColor: Colors.green,
+            backgroundColor: Colors.yellow,
             strokeWidth: 4,
             valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
           );
@@ -27,7 +29,10 @@ class CircularProgressIndicatorWidget extends StatelessWidget {
             strokeWidth: 4,
             valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
           );
-        } else if (snapshot.connectionState == ConnectionState.done) {
+        } else if (snapshot.connectionState == ConnectionState.done &&
+            !isCanceled) {
+          //is not cancelled dont go in this bloc
+          debugPrint('done circular');
           // Use the completed value of the future in CircularProgressIndicator
           double progressValue = snapshot.data ?? 0.0;
           debugPrint('snapshot success ${snapshot.data}');
@@ -39,16 +44,7 @@ class CircularProgressIndicatorWidget extends StatelessWidget {
             valueColor: const AlwaysStoppedAnimation<Color>(Colors.red),
           );
         } else {
-          // Use the completed value of the future in CircularProgressIndicator
-          double progressValue = snapshot.data ?? 0.0;
-          debugPrint('snapshot else ${snapshot.data}');
-
-          return CircularProgressIndicator(
-            value: progressValue,
-            backgroundColor: Colors.green,
-            strokeWidth: 4,
-            valueColor: const AlwaysStoppedAnimation<Color>(Colors.red),
-          );
+          return Container();
         }
       },
     );

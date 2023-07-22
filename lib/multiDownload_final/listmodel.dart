@@ -13,6 +13,7 @@ class DownloadModel {
       downloadTaskList.add(
         MyDownloadTask(
           // buttonstate: ButtonState.download,
+          isCanceled: false,
           downloadInProgress: false,
           downloadComplete: false,
           listProgress: 0.0,

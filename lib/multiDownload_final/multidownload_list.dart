@@ -12,6 +12,7 @@ import '../model/video_model.dart';
 import 'Utils.dart';
 import 'VideoUtils.dart';
 import 'button_state_notifier.dart';
+import 'downloadManager.dart';
 import 'myloadtask.dart';
 import 'permission_handler.dart';
 import 'sharedpref_helper.dart';
@@ -33,7 +34,9 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
   List<ValueNotifier<ButtonState>> buttonStateNotifiers = [];
   ValueNotifier<int> progressIndexNotifier = ValueNotifier<int>(0);
   bool _isInitialized = false;
-  MyDownloadTask? listModelTaskList;
+  late MyDownloadTask listModelTaskList;
+  late DownloadManager downloadManager;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -49,7 +52,7 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
   void initState() {
     super.initState();
 
-    initDonwloader(); //init downloader
+    initDonwloadeManager(); //init downloader
 
     Utils.loadjsonfromAssets().then(
       //load json from assets
@@ -71,13 +74,12 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Support MultiDownload'),
+        title: const Text('Support Multi-Download'),
       ),
       body: ListView.builder(
         itemCount: model.length,
         itemBuilder: (context, index) {
           listModelTaskList = donloadModel!.downloadTaskList[index];
-
           return ListTile(
             leading: CircleAvatar(
               radius: 24,
@@ -93,11 +95,11 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  listModelTaskList!.downloadInProgress //need progressindex
+                  listModelTaskList.downloadInProgress //need progressindex
                       ? CircularProgressIndicatorWidget(
+                          isCanceled: listModelTaskList.isCanceled,
                           future: DonwloadUtils.getProgressValue(
-                              listModelTaskList!.listProgress,
-                              listModelTaskList!,
+                              listModelTaskList,
                               buttonStateNotifiers[index],
                               sharedPreferencesHelper),
                         )
@@ -110,11 +112,11 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
                                   .value = ButtonState.completed;
                               setState(() {
                                 progressIndexNotifier.value = index;
-                                listModelTaskList!.downloadInProgress = false;
+                                listModelTaskList.downloadInProgress = false;
                               });
                             } else {
                               // Pass the index of the tapped item
-                              onItemTap(index);
+                              onDonwloadStart(index);
                             }
                           },
                           child: Icon(
@@ -122,7 +124,7 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
                                 buttonStateNotifiers[index].value, () {
                               setState(() {});
                             }),
-                            color: listModelTaskList!.downloadComplete
+                            color: listModelTaskList.downloadComplete
                                 ? Colors.black
                                 : Colors.green,
                           ),
@@ -142,19 +144,27 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
                                   buttonStateNotifiers[
                                           progressIndexNotifier.value]
                                       .value = ButtonState.resume;
-                                  //error here on pause and resume on multiple list dodwnload
                                   progressIndexNotifier.value = index;
                                   VideoUtils.pauseDownload(pauseResumetaskID);
                                 } else if (buttonStateNotifiers[index].value ==
                                     ButtonState.resume) {
-                                  // debugPrint('RESUME ELSE-- $ListbuttonStates');
                                   buttonStateNotifiers[index].value =
                                       ButtonState.pause;
-                                  //error here on pause and resume on multiple list dodwnload
 
                                   progressIndexNotifier.value = index;
 
                                   VideoUtils.resumeDownload(pauseResumetaskID);
+                                } else if (buttonStateNotifiers[index].value ==
+                                    ButtonState.download) {
+                                  debugPrint('start donwonlaod');
+                                  onDonwloadStart(index);
+                                } else if (buttonStateNotifiers[index].value ==
+                                    ButtonState.canceled) {
+                                  setState(() {
+                                    listModelTaskList.downloadInProgress =
+                                        false; //reset progressbar
+                                    listModelTaskList.isCanceled = true;
+                                  });
                                 }
                               },
                               child: Icon(
@@ -163,7 +173,7 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
                                   setState(() {});
                                 }),
                                 //state as per in list
-                                color: Colors.blue,
+                                color: Colors.black,
                               ),
                             ),
                           ),
@@ -180,6 +190,8 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
 
   void myNotificationTapCallback(Task task, NotificationType notificationType) {
     debugPrint('notification $notificationType for taskId ${task.taskId}');
+    //it is not called of when click on notification error not
+    //solved by developer of library in futture it will work i think
   }
 
   void initDonwloader() {
@@ -230,10 +242,10 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
           modellist!.downloadInProgress = false;
           modellist!.downloadComplete = true;
           buttonStateNotifiers[progressIndexNotifier.value].value =
-              ButtonState.completed;
+              ButtonState.completed; //change button state when completed task
         }
         if (update.progress > 0) {
-          //this is important because it return - value on pause
+          //this is important because it return (- negative value)  on pause
           taskProgress.value = update.progress;
           debugPrint('adding is ${update.progress}');
           taskIDprogress.value = modellist!.downloadTask!.taskId;
@@ -242,7 +254,7 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
     });
   }
 
-  void onItemTap(int index) async {
+  void onDonwloadStart(int index) async {
     progressIndexNotifier.value = index;
 
     String url = model[progressIndexNotifier.value].videoUrl;
@@ -252,18 +264,17 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
       debugPrint('storage Permission denied');
       return;
     }
-
     // Get the corresponding MyDownloadTask
     MyDownloadTask? listModel;
-
     // Start the download
     setState(() {
       listModel = donloadModel!
           .downloadTaskList[progressIndexNotifier.value]; //update for circular
       listModel!.downloadInProgress = true;
       listModel!.downloadComplete = false;
+      listModel!.isCanceled = false;
     });
-
+// start donwloading
     DonwloadUtils.processButtonPress(
       url: url,
       filename: randomefilename,
@@ -294,7 +305,23 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
       );
       buttonStateNotifiers[taskIndex].value = ButtonState.resume;
     } else if (status == TaskStatus.canceled) {
-      buttonStateNotifiers[taskIndex].value = ButtonState.download;
+      debugPrint('caneceld');
+      setState(() {
+        listModelTaskList.downloadInProgress = false; //reset progressbar
+        donloadModel!.downloadTaskList[taskIndex].isCanceled = true;
+      });
+      buttonStateNotifiers[taskIndex].value =
+          ButtonState.download; //dont need setstate using notifier
     }
+  }
+
+  void initDonwloadeManager() {
+    downloadManager = DownloadManager(
+      onTaskStatusUpdates: (update) {},
+      onTaskProgressUpdates: (update) {},
+    );
+
+    // Call the initDownloader method to start listening for updates
+    downloadManager.initDownloader();
   }
 }

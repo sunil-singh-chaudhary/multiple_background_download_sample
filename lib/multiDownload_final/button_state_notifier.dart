@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 
 // Define the ButtonState enum
-enum ButtonState {
-  download,
-  pause,
-  resume,
-  completed,
-}
+enum ButtonState { download, pause, resume, completed, canceled }
 
 class ButtonStateNotifier extends ValueNotifier<List<ButtonState>> {
   ButtonStateNotifier(List<ButtonState> value) : super(value);

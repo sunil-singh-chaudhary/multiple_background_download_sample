@@ -53,7 +53,6 @@ class DonwloadUtils {
   }
 
   static Future<double> getProgressValue(
-    double pGress,
     MyDownloadTask listModel,
     ValueNotifier<ButtonState> buttonState,
     SharedPreferencesHelper? sharedPreferencesHelper,
@@ -72,8 +71,8 @@ class DonwloadUtils {
           0.0;
     } else {
       // Return the progress from the current task when it's not paused, resumed, or complete
-      debugPrint('buttonstate progress  $pGress');
-      return pGress;
+      debugPrint('buttonstate progress  ${listModel.listProgress}');
+      return listModel.listProgress;
     }
   }
 }
