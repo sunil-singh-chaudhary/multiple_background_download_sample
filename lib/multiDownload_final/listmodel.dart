@@ -23,7 +23,6 @@ class DownloadModel {
             filename: 'test',
             directory: 'my/directory',
           ),
-          isPaused: false,
         ),
       );
     }

@@ -5,15 +5,11 @@ class MyDownloadTask {
   bool downloadComplete; //not needed
   double listProgress;
   DownloadTask? downloadTask;
-  bool isPaused;
-  // ButtonState buttonstate;
 
   MyDownloadTask({
     required this.downloadInProgress,
     required this.downloadComplete,
     required this.listProgress,
     required this.downloadTask,
-    required this.isPaused,
-    // required this.buttonstate,
   });
 }

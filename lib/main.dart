@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
 
 import 'multiDownload_final/multidownload_list.dart';
+import 'multiDownload_final/sharedpref_helper.dart';
+import 'multiDownload_final/sharedpreferenceprovider.dart';
 
-void main() {
-  runApp(const MyApp());
+SharedPreferencesHelper? sharedPreferencesHelper;
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize SharedPreferencesHelper
+  sharedPreferencesHelper = SharedPreferencesHelper();
+  await sharedPreferencesHelper!.init();
+
+  runApp(
+    const MyApp(),
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -16,8 +27,10 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: MultiDonwloadListview(),
+    return MaterialApp(
+      home: SharedPreferencesProvider(
+          sharedPreferencesHelper: sharedPreferencesHelper!,
+          child: const MultiDonwloadListview()),
     );
   }
 }
