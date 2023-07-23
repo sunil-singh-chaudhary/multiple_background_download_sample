@@ -1,11 +1,11 @@
 import 'dart:math';
 
-import 'package:background_download_sample/multiDownload_final/sharedpref_helper.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/material.dart';
 
-import 'button_state_notifier.dart';
-import 'myloadtask.dart';
+import '../utils/button_state_notifier.dart';
+import '../model/myloadtask.dart';
+import '../sharedPreferences/sharedpref_helper.dart';
 
 class DonwloadUtils {
   static Future<void> processButtonPress({
@@ -45,8 +45,8 @@ class DonwloadUtils {
       return ButtonState.pause;
     } else if (status == TaskStatus.paused) {
       return ButtonState.resume;
-    } else if (status == TaskStatus.complete) {
-      return ButtonState.completed;
+    } else if (status == TaskStatus.canceled) {
+      return ButtonState.download;
     } else {
       return ButtonState.download;
     }

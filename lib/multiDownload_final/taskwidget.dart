@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'button_state_notifier.dart';
+import '../utils/button_state_notifier.dart';
 
 class MyDownloadIcon {
   static IconData getIconData(ButtonState state, Function() onchnagestate) {

@@ -1,21 +1,22 @@
 import 'dart:convert';
 
-import 'package:background_download_sample/multiDownload_final/download_Utils.dart';
-import 'package:background_download_sample/multiDownload_final/listmodel.dart';
+import 'package:background_download_sample/DownloadServices/download_Utils.dart';
+import 'package:background_download_sample/model/listmodel.dart';
 import 'package:background_download_sample/multiDownload_final/progress_indicator_widget.dart';
-import 'package:background_download_sample/multiDownload_final/sharedpreferenceprovider.dart';
 import 'package:background_download_sample/multiDownload_final/taskwidget.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/material.dart';
 
 import '../model/video_model.dart';
-import 'Utils.dart';
-import 'VideoUtils.dart';
-import 'button_state_notifier.dart';
-import 'downloadManager.dart';
-import 'myloadtask.dart';
-import 'permission_handler.dart';
-import 'sharedpref_helper.dart';
+import '../sharedPreferences/sharedpref_helper.dart';
+import '../sharedPreferences/sharedpreferenceprovider.dart';
+import '../utils/Utils.dart';
+import '../utils/VideoUtils.dart';
+import '../utils/button_state_notifier.dart';
+import 'buttonstate.dart';
+import '../DownloadServices/downloadManager.dart';
+import '../model/myloadtask.dart';
+import '../permissonHandler/permission_handler.dart';
 
 class MultiDonwloadListview extends StatefulWidget {
   const MultiDonwloadListview({super.key});
@@ -36,6 +37,7 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
   bool _isInitialized = false;
   late MyDownloadTask listModelTaskList;
   late DownloadManager downloadManager;
+  late ButtonStateCallBack buttonStateCallBack;
 
   @override
   void didChangeDependencies() {
@@ -51,6 +53,11 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
   @override
   void initState() {
     super.initState();
+    buttonStateCallBack = ButtonStateCallBack(
+      //handling button state
+      onButtonStateChanged: (buttonstate, index) =>
+          handleButtonStateChanged(buttonstate, index),
+    );
 
     initDonwloadeManager(); //init downloader
 
@@ -188,72 +195,6 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
     );
   }
 
-  void myNotificationTapCallback(Task task, NotificationType notificationType) {
-    debugPrint('notification $notificationType for taskId ${task.taskId}');
-    //it is not called of when click on notification error not
-    //solved by developer of library in futture it will work i think
-  }
-
-  void initDonwloader() {
-    FileDownloader()
-        .registerCallbacks(
-            taskNotificationTapCallback: myNotificationTapCallback)
-        .configureNotificationForGroup(FileDownloader.defaultGroup,
-            tapOpensFile: true,
-            running: const TaskNotification(
-                'Download {filename}', 'File: {filename} - {progress}'),
-            complete: const TaskNotification(
-                'Download {filename}', 'Download complete'),
-            error: const TaskNotification(
-                'Download {filename}', 'Download failed'),
-            paused: const TaskNotification(
-                'Download {filename}', 'Paused with metadata {metadata}'),
-            progressBar: true)
-        .configureNotification(
-            complete: const TaskNotification(
-                'Download {filename}', 'Download complete'),
-            tapOpensFile: true);
-    // Listen to updates and process
-    FileDownloader().updates.listen((update) {
-      if (update is TaskStatusUpdate) {
-        for (int i = 0; i < donloadModel!.downloadTaskList.length; i++) {
-          DownloadTask task = donloadModel!.downloadTaskList[i].downloadTask!;
-          if (task == update.task) {
-            TaskStatus status = update.status;
-            updateButtonState(i, status);
-            break;
-          }
-        }
-      } else if (update is TaskProgressUpdate) {
-        //find the index of taskid saved in list
-        int taskIndex = donloadModel!.downloadTaskList
-            .indexWhere((task) => task.downloadTask == update.task);
-
-        progressIndexNotifier.value = taskIndex;
-        MyDownloadTask? modellist;
-        setState(() {
-          modellist = donloadModel!.downloadTaskList[
-              progressIndexNotifier.value]; //update for circular
-          modellist!.listProgress = update.progress;
-        });
-
-        if (update.progress >= 1) {
-          // Download completed
-          modellist!.downloadInProgress = false;
-          modellist!.downloadComplete = true;
-          buttonStateNotifiers[progressIndexNotifier.value].value =
-              ButtonState.completed; //change button state when completed task
-        }
-        if (update.progress > 0) {
-          //this is important because it return (- negative value)  on pause
-          taskProgress.value = update.progress;
-          debugPrint('adding is ${update.progress}');
-          taskIDprogress.value = modellist!.downloadTask!.taskId;
-        }
-      }
-    });
-  }
-
   void onDonwloadStart(int index) async {
     progressIndexNotifier.value = index;
 
@@ -292,19 +233,63 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
     );
   }
 
-  void updateButtonState(int taskIndex, TaskStatus status) {
-    if (status == TaskStatus.running || status == TaskStatus.enqueued) {
+  void initDonwloadeManager() {
+    downloadManager = DownloadManager(
+      onTaskStatusUpdates: (update) {
+        for (int i = 0; i < donloadModel!.downloadTaskList.length; i++) {
+          DownloadTask task = donloadModel!.downloadTaskList[i].downloadTask!;
+          if (task == update.task) {
+            TaskStatus status = update.status;
+            buttonStateCallBack.updateButtonState(i, status);
+            break;
+          }
+        }
+      },
+      onTaskProgressUpdates: (update) {
+        //find the index of taskid saved in list
+        int taskIndex = donloadModel!.downloadTaskList
+            .indexWhere((task) => task.downloadTask == update.task);
+
+        progressIndexNotifier.value = taskIndex;
+        MyDownloadTask? modellist;
+        setState(() {
+          modellist = donloadModel!.downloadTaskList[
+              progressIndexNotifier.value]; //update for circular
+          modellist!.listProgress = update.progress;
+        });
+
+        if (update.progress >= 1) {
+          // Download completed
+          modellist!.downloadInProgress = false;
+          modellist!.downloadComplete = true;
+          buttonStateNotifiers[progressIndexNotifier.value].value =
+              ButtonState.completed; //change button state when completed task
+        }
+        if (update.progress > 0) {
+          //this is important because it return (- negative value)  on pause
+          taskProgress.value = update.progress;
+          debugPrint('adding is ${update.progress}');
+          taskIDprogress.value = modellist!.downloadTask!.taskId;
+        }
+      },
+    );
+    // Call the initDownloader method to start listening for updates
+    downloadManager.initDownloader();
+  }
+
+  void handleButtonStateChanged(ButtonState buttonState, int taskIndex) {
+    debugPrint('caneceld  $buttonState');
+
+    if (buttonState == ButtonState.pause) {
       buttonStateNotifiers[taskIndex].value = ButtonState.pause;
-    } else if (status == TaskStatus.paused) {
-      debugPrint('id is ${taskIDprogress.value}');
-      debugPrint('progress is ${taskProgress.value}');
+    } else if (buttonState == ButtonState.resume) {
       // Save the progress to SharedPreferences whenever it is updated
       sharedPreferencesHelper?.saveProgress(
         taskIDprogress.value,
         taskProgress.value,
       );
       buttonStateNotifiers[taskIndex].value = ButtonState.resume;
-    } else if (status == TaskStatus.canceled) {
+    } else if (buttonState == ButtonState.canceled) {
       debugPrint('caneceld');
       setState(() {
         listModelTaskList.downloadInProgress = false; //reset progressbar
@@ -313,15 +298,5 @@ class _MultiDonwloadListviewState extends State<MultiDonwloadListview> {
       buttonStateNotifiers[taskIndex].value =
           ButtonState.download; //dont need setstate using notifier
     }
-  }
-
-  void initDonwloadeManager() {
-    downloadManager = DownloadManager(
-      onTaskStatusUpdates: (update) {},
-      onTaskProgressUpdates: (update) {},
-    );
-
-    // Call the initDownloader method to start listening for updates
-    downloadManager.initDownloader();
   }
 }

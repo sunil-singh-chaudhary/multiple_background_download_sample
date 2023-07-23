@@ -1,8 +1,8 @@
+import 'package:background_download_sample/sharedPreferences/sharedpref_helper.dart';
+import 'package:background_download_sample/sharedPreferences/sharedpreferenceprovider.dart';
 import 'package:flutter/material.dart';
 
 import 'multiDownload_final/multidownload_list.dart';
-import 'multiDownload_final/sharedpref_helper.dart';
-import 'multiDownload_final/sharedpreferenceprovider.dart';
 
 SharedPreferencesHelper? sharedPreferencesHelper;
 void main() async {
